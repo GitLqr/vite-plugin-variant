@@ -141,8 +141,9 @@ export default class VariantFilesManager {
         // if the mcs main dir remove.
         const mcsChannelDir = this.getMcsChannelFilePath(filePath);
         if (mcsChannelDir && fileUtil.isExist(mcsChannelDir)) {
-          // if the mcs channel dir exist, ignore the mcs main dir's remove event, because the mcs channel dir has priority over the mcs main dir.
-          this.log("【onDirRemove】ignore remove ", filePath);
+          // if the mcs channel dir exist, the mcs channel dir has the first priority, so copy the mcs channel dir to the fcs dir and clear the fcs dir at the same time.
+          fileUtil.copyDir(mcsChannelDir, dstDirPath, true);
+          this.log("【onDirRemove】copy the mcs channel dir to the fcs dir.");
         } else {
           // if the mcs channel dir does not exist, remove the fcs dir directly.
           fileUtil.rm(dstDirPath);
