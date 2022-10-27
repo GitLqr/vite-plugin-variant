@@ -133,14 +133,15 @@ function startMcsWatcher() {
 function onDirUpdate(filePath: string) {
   const dstDirPath = getFcsFilePath(filePath);
   if (dstDirPath) {
-    // log(`【onDirUpdate】fcsDirPath : ${fcsDirPath}, dstDirPath : ${dstDirPath}`);
     if (fileUtil.isExist(dstDirPath)) {
-      // subfile or subdir update(create or update or delete) under the dir
+      // subfile or subdir update(create or update or delete) under the mcs dir.
+      // ignore this event because other listener will handle it when necessary.
       log("【onDirUpdate】ignore update ", filePath);
     } else {
-      // create new dir
-      fileUtil.getPath(true, dstDirPath);
-      log("【onDirUpdate】create dst dir : ", dstDirPath);
+      // it's impossible the remove event, it's only possible add or update event,
+      // so create new fcs dir whether it is mcs main dir or channel dir.
+      fileUtil.mkdirs(dstDirPath);
+      log("【onDirUpdate】create the fcs dir : ", dstDirPath);
     }
   }
 }
@@ -148,34 +149,80 @@ function onDirUpdate(filePath: string) {
 function onFileUpdate(filePath: string) {
   const dstFilePath = getFcsFilePath(filePath);
   if (dstFilePath) {
-    if (fileUtil.isExist(dstFilePath)) {
-      // update
+    if (isMcsChannelFilePath(filePath)) {
+      // if the mcs channel file add or update, copy directly, because the mcs channel file has priority over the mcs main file.
       fileUtil.copyFile(filePath, dstFilePath);
-      log("【onFileUpdate】update dst file : ", dstFilePath);
-    } else {
-      // add
-      fileUtil.copyFile(filePath, dstFilePath);
-      log("【onFileUpdate】create dst file : ", dstFilePath);
+      log("【onFileUpdate】update the fcs file : ", dstFilePath);
+    } else if (isMcsMainFilePath(filePath)) {
+      // if the mcs main file add or update.
+      const mcsChannelFile = getMcsChannelFilePath(filePath);
+      if (mcsChannelFile && fileUtil.isExist(mcsChannelFile)) {
+        // if the mcs channel file exist, ignore the mcs main file's update event, because the mcs channel file has priority over the mcs main file.
+        log("【onFileUpdate】ignore update ", filePath);
+      } else {
+        // if the mcs channel file does not exist, copy the mcs main file to the fcs file.
+        fileUtil.copyFile(filePath, dstFilePath);
+        log("【onFileUpdate】update the fcs file : ", dstFilePath);
+      }
     }
   }
 }
 
 function onDirRemove(filePath: string) {
   const dstDirPath = getFcsFilePath(filePath);
-  if (dstDirPath) {
-    if (fileUtil.isExist(dstDirPath)) {
-      fileUtil.rm(dstDirPath);
-      log("【onDirRemove】remove dst dir : ", dstDirPath);
+  if (dstDirPath && fileUtil.isExist(dstDirPath)) {
+    if (isMcsChannelFilePath(filePath)) {
+      // if the mcs channel file remove.
+      const mcsMainDir = getMcsMainFilePath(filePath);
+      if (mcsMainDir && fileUtil.isExist(mcsMainDir)) {
+        // if the mcs main dir exist, the mcs main dir has the first priority, so copy the mcs main dir to the fcs dir and clear the fcs dir at the same time.
+        fileUtil.copyDir(mcsMainDir, dstDirPath, true);
+        log("【onDirRemove】copy the mcs main dir to the fcs dir.");
+      } else {
+        // if the mcs main dir does not exist, remove the fcs dir directly.
+        fileUtil.rm(dstDirPath);
+        log("【onDirRemove】remove the fcs dir : ", dstDirPath);
+      }
+    } else if (isMcsMainFilePath(filePath)) {
+      // if the mcs main dir remove.
+      const mcsChannelDir = getMcsChannelFilePath(filePath);
+      if (mcsChannelDir && fileUtil.isExist(mcsChannelDir)) {
+        // if the mcs channel dir exist, ignore the mcs main dir's remove event, because the mcs channel dir has priority over the mcs main dir.
+        log("【onDirRemove】ignore remove ", filePath);
+      } else {
+        // if the mcs channel dir does not exist, remove the fcs dir directly.
+        fileUtil.rm(dstDirPath);
+        log("【onDirRemove】remove the fcs dir : ", dstDirPath);
+      }
     }
   }
 }
 
 function onFileRemove(filePath: string) {
   const dstFilePath = getFcsFilePath(filePath);
-  if (dstFilePath) {
-    if (fileUtil.isExist(dstFilePath)) {
-      fileUtil.rm(dstFilePath);
-      log("【onDirRemove】remove dst file : ", dstFilePath);
+  if (dstFilePath && fileUtil.isExist(dstFilePath)) {
+    if (isMcsChannelFilePath(filePath)) {
+      // if the mcs channel file remove.
+      const mcsMainFile = getMcsMainFilePath(filePath);
+      if (mcsMainFile && fileUtil.isExist(mcsMainFile)) {
+        // if the mcs main file exist, the mcs main file has the first priority, so copy the mcs main file to the fcs file.
+        fileUtil.copyFile(mcsMainFile, dstFilePath);
+      } else {
+        // if the mcs main file does not exist, remove the fcs file directly.
+        fileUtil.rm(dstFilePath);
+        log("【onFileRemove】remove the fcs file : ", dstFilePath);
+      }
+    } else if (isMcsMainFilePath(filePath)) {
+      // if the mcs main file remove.
+      const mcsChannelFile = getMcsChannelFilePath(filePath);
+      if (mcsChannelFile && fileUtil.isExist(mcsChannelFile)) {
+        // if the mcs channel file exist, ignore the mcs main file's remove event, because the mcs channel file has priority over the mcs main file.
+        log("【onFileRemove】ignore remove ", filePath);
+      } else {
+        // if the mcs channel file doet not exist, remove the fcs file directly.
+        fileUtil.rm(dstFilePath);
+        log("【onFileRemove】remove the fcs file : ", dstFilePath);
+      }
     }
   }
 }
@@ -260,27 +307,62 @@ function getFcsDirPath(): string {
  * it is only possible to get the relative path of a Mcs dir or file
  */
 function getRelativePath(srcPath: string): string | undefined {
-  const mcsMainDirPath = getMcsMainDirPath();
-  let index = srcPath.indexOf(mcsMainDirPath);
-  if (index != -1) {
+  if (isMcsMainFilePath(srcPath)) {
+    const mcsMainDirPath = getMcsMainDirPath();
+    const index = srcPath.indexOf(mcsMainDirPath);
     return srcPath.substring(index + mcsMainDirPath.length);
   }
 
-  const mcsCurrentChannelDirPath = getMcsCurrentChannelDirPath();
-  if (
-    mcsCurrentChannelDirPath &&
-    (index = srcPath.indexOf(mcsCurrentChannelDirPath)) != -1
-  ) {
-    return srcPath.substring(index + mcsCurrentChannelDirPath.length);
+  if (isMcsChannelFilePath(srcPath)) {
+    const mcsChannelDirPath = getMcsCurrentChannelDirPath()!!;
+    const index = srcPath.indexOf(mcsChannelDirPath);
+    return srcPath.substring(index + mcsChannelDirPath.length);
   }
 }
 
+/**
+ * get the mcs main file path by refer to the mcs channel file path.
+ */
+function getMcsMainFilePath(mcsChannelFilePath: string) {
+  const relativePath = getRelativePath(mcsChannelFilePath);
+  if (relativePath) {
+    const mcsMainDirPath = getMcsMainDirPath();
+    return fileUtil.getPath(false, mcsMainDirPath, relativePath);
+  }
+}
+
+/**
+ * get the mcs channel file path by refer to the mcs main file path.
+ */
+function getMcsChannelFilePath(mcsMainFilePath: string) {
+  const relativePath = getRelativePath(mcsMainFilePath);
+  if (relativePath) {
+    const mcsChannelDirPath = getMcsCurrentChannelDirPath();
+    if (mcsChannelDirPath) {
+      return fileUtil.getPath(false, mcsChannelDirPath, relativePath);
+    }
+  }
+}
+
+/**
+ * get the fcs dir path by refer to the mcs dir path.
+ */
 function getFcsFilePath(mcsFilePath: string) {
   const relativePath = getRelativePath(mcsFilePath);
   if (relativePath) {
     const fcsDirPath = getFcsDirPath();
     return fileUtil.getPath(false, fcsDirPath, relativePath);
   }
+}
+
+function isMcsMainFilePath(srcPath: string) {
+  const mcsMainDirPath = getMcsMainDirPath();
+  return srcPath.indexOf(mcsMainDirPath) !== -1;
+}
+
+function isMcsChannelFilePath(srcPath: string) {
+  const mcsChannelDirPath = getMcsCurrentChannelDirPath();
+  return mcsChannelDirPath && srcPath.indexOf(mcsChannelDirPath) !== -1;
 }
 
 function log(message?: any, ...optionalParams: any[]) {
