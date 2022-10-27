@@ -16,7 +16,8 @@
     "dev": "npm run build -- --watch --ignore-watch examples",
     "build": "tsup src/index.ts --dts --format cjs,esm",
     "publish": "npm run build && npx bumpp --push --tag --commit && npm publish",
-    "dev:vite-vue3-demo": "cd examples/vite-vue3-demo && npm run dev"
+    "dev:vite-vue3-demo": "cd examples/vite-vue3-demo && npm run dev",
+    "build:vite-vue3-demo": "cd examples/vite-vue3-demo && npm run build"
   },
   "repository": {
     "type": "git",
@@ -39,5 +40,8 @@
     "tsup": "^6.3.0",
     "typescript": "^4.8.4",
     "vite": "^3.1.8"
+  },
+  "dependencies": {
+    "node-watch": "^0.7.3"
   }
 }
