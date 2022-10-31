@@ -326,7 +326,7 @@ export default class VariantFilesManager {
     return mcsChannelDirPath && srcPath.indexOf(mcsChannelDirPath) !== -1;
   }
 
-  private log(message?: any, ...optionalParams: any[]) {
+  public log(message?: any, ...optionalParams: any[]) {
     if (this.variantOption?.debug) {
       console.log(message, ...optionalParams);
     }

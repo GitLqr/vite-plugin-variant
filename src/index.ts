@@ -10,23 +10,20 @@ import VariantFilesManager from "./manager/VariantFilesManager";
  * @author GitLqr
  * @since 2022-10-23
  */
-export default function vitePluginVariant(
-  option?: VariantOption
-): PluginOption {
+export default function variant(option?: VariantOption): PluginOption {
   const manager = new VariantFilesManager(option);
+  manager.log(`syncMcsToFcs`);
+  manager.syncMcsToFcs();
   return {
     name: "vite-plugin-variant",
     enforce: "pre",
-    config() {
-      console.log(`hook config()`);
-    },
+    config() {},
     buildStart(options) {
-      console.log(`hook buildStart()`);
-      manager.syncMcsToFcs();
+      manager.log(`startMcsWatcher`);
       manager.startMcsWatcher();
     },
     buildEnd(err?) {
-      console.log(`hook buildEnd()`);
+      manager.log(`stopMcsWatcher`);
       manager.stopMcsWatcher();
     },
   };
