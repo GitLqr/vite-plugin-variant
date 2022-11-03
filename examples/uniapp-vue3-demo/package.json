@@ -57,7 +57,10 @@
     "@dcloudio/uni-cli-shared": "3.0.0-alpha-3060720221018006",
     "@dcloudio/uni-stacktracey": "3.0.0-alpha-3060720221018006",
     "@dcloudio/vite-plugin-uni": "3.0.0-alpha-3060720221018006",
+    "mini-types": "^0.1.7",
+    "miniprogram-api-typings": "^3.6.0",
     "typescript": "^4.8.3",
+    "uni-ui-types": "^0.1.5",
     "vite": "^3.1.8",
     "vite-plugin-variant": "file:../../"
   }
