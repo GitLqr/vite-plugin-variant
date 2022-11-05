@@ -12,21 +12,23 @@ import VariantFilesManager from "./manager/VariantFilesManager";
  */
 export default function variant(option?: VariantOption): PluginOption {
   const manager = new VariantFilesManager(option);
-  manager.log(`syncMcsToFcs`);
+  manager.log("\ninitTsConfig");
+  manager.initTsConfig();
+  manager.log("\nsyncMcsToFcs");
   manager.syncMcsToFcs();
   return {
     name: "vite-plugin-variant",
     enforce: "pre",
     config(config, env) {
-      manager.log(`configMcsDefine`);
+      manager.log("\nconfigMcsDefine");
       manager.configMcsDefine(config, env);
     },
     buildStart(options) {
-      manager.log(`startMcsWatcher`);
+      manager.log("\nstartMcsWatcher");
       manager.startMcsWatcher();
     },
     buildEnd(err?) {
-      manager.log(`stopMcsWatcher`);
+      manager.log("\nstopMcsWatcher");
       manager.stopMcsWatcher();
     },
   };

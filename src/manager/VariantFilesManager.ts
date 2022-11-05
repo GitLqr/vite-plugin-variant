@@ -63,6 +63,57 @@ export default class VariantFilesManager {
   }
 
   /**
+   * handle 'include' option in 'tsconfig.json' to resolve code warning in mcs dir
+   */
+  public initTsConfig() {
+    const tsconfigJson = fileUtil.getPath(false, resolvedRoot, "tsconfig.json");
+    const content = fileUtil.readContent(tsconfigJson);
+    this.log(`tsconfig.json = ${tsconfigJson}`);
+    if (!fileUtil.isExist(tsconfigJson) || !content) {
+      this.log("not handle tsconfig.json, because it isn't exist or is empty");
+      return;
+    }
+    const tsconfigObj = JSON.parse(content);
+    const includeArray = tsconfigObj["include"];
+    if (!includeArray) {
+      tsconfigObj["include"] = [];
+    }
+    if (!(includeArray instanceof Array)) {
+      this.log("not handle tsconfig.json, because 'include' isn't array");
+      return;
+    }
+    // "variants/**/*.ts",
+    // "variants/**/*.d.ts",
+    // "variants/**/*.tsx",
+    // "variants/**/*.vue"
+    const includeTs = `${this.variantOption.mcsBase}/**/*.ts`;
+    const includeDts = `${this.variantOption.mcsBase}/**/*.d.ts`;
+    const includeTsx = `${this.variantOption.mcsBase}/**/*.tsx`;
+    const includeVue = `${this.variantOption.mcsBase}/**/*.vue`;
+    if (
+      includeArray.indexOf(includeTs) === -1 ||
+      includeArray.indexOf(includeDts) === -1 ||
+      includeArray.indexOf(includeTsx) === -1 ||
+      includeArray.indexOf(includeVue) === -1
+    ) {
+      // change Array to Set
+      const includeSet = new Set(includeArray);
+      // add expr to Set
+      includeSet.add(includeTs);
+      includeSet.add(includeDts);
+      includeSet.add(includeTsx);
+      includeSet.add(includeVue);
+      // change Set to Array,then assign it to tsconfigObj
+      tsconfigObj["include"] = Array.from(includeSet);
+      // update tsconfig.json
+      fileUtil.writeContent(JSON.stringify(tsconfigObj, null, 2), tsconfigJson);
+      this.log("handle 'include' option in tsconfig.json");
+    } else {
+      this.log("not handle tsconfig.json, because 'include' is perfect");
+    }
+  }
+
+  /**
    * clear Fcs dir and copy Mcs files to Fcs dir
    */
   public syncMcsToFcs() {
