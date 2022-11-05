@@ -17,7 +17,10 @@ export default function variant(option?: VariantOption): PluginOption {
   return {
     name: "vite-plugin-variant",
     enforce: "pre",
-    config() {},
+    config(config, env) {
+      manager.log(`configMcsDefine`);
+      manager.configMcsDefine(config, env);
+    },
     buildStart(options) {
       manager.log(`startMcsWatcher`);
       manager.startMcsWatcher();

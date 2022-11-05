@@ -1,6 +1,12 @@
+import child_process from "child_process";
+import watch from "node-watch";
+import { ConfigEnv, UserConfig } from "vite";
 import { VariantOption } from "../models/VariantOption";
 import * as fileUtil from "../utils/fileUtil";
-import watch from "node-watch";
+
+const VARIANT_CACHE_DIR = ".variant";
+const VARIANT_ENV_TS = "variant-env.ts";
+const VARIANT_ENV_DTS = "variant-env.d.ts";
 
 /**
  * 变体（渠道）文件管理器
@@ -18,6 +24,8 @@ export default class VariantFilesManager {
     mcsBase: "./variants",
     mcsMain: "main",
     mcsCurrent: undefined,
+    mcsDefine: undefined,
+    genEnvFile: true,
     fcsBase: "./",
     fcsDir: "src",
     debug: false,
@@ -32,6 +40,8 @@ export default class VariantFilesManager {
       if (option.mcsBase) this.variantOption.mcsBase = option.mcsBase;
       if (option.mcsMain) this.variantOption.mcsMain = option.mcsMain;
       if (option.mcsCurrent) this.variantOption.mcsCurrent = option.mcsCurrent;
+      if (option.mcsDefine) this.variantOption.mcsDefine = option.mcsDefine;
+      if (option.genEnvFile) this.variantOption.genEnvFile = option.genEnvFile;
       if (option.fcsBase) this.variantOption.fcsBase = option.fcsBase;
       if (option.fcsDir) this.variantOption.fcsDir = option.fcsDir;
       this.variantOption.debug = option.debug === true;
@@ -51,6 +61,128 @@ export default class VariantFilesManager {
       const mcsCurrentChannelDir = this.getMcsCurrentChannelDirPath();
       if (mcsCurrentChannelDir) {
         fileUtil.copyDir(mcsCurrentChannelDir, fcsDir, false);
+      }
+    }
+  }
+
+  /**
+   * add vite definition for current channel
+   */
+  public configMcsDefine(config: UserConfig, env: ConfigEnv) {
+    const mcsCurrent = this.variantOption.mcsCurrent;
+    const mcsDefine = this.variantOption.mcsDefine;
+    if (mcsCurrent && mcsDefine) {
+      if (!config.define) {
+        config.define = {};
+      }
+      // find out current channel define from mcsDefine
+      const curConfig = mcsDefine[mcsCurrent];
+      if (!curConfig) {
+        this.log("mcsCurrent isn't included in mcsDefine.");
+        return;
+      }
+
+      let content = "";
+      curConfig["FLAVOR"] = mcsCurrent;
+      for (const key in curConfig) {
+        const value = curConfig[key];
+
+        // add vite definition
+        // https://cn.vitejs.dev/config/shared-options.html#define
+        config.define[key] = JSON.stringify(value);
+        this.log(`add define ${key} : ${value}`);
+
+        // append content of ".variant/variant-env.ts"
+        const valType = typeof value;
+        if (valType == "object") {
+          content += `const ${key} = ${JSON.stringify(value)};\n`;
+        } else {
+          // if value is a primitive type, we should specify it's type explicitly. because:
+          // const a = "a" --d.ts--> declare const a:"a"
+          // const a:string = "a" --d.ts--> declare const a:string
+          content += `const ${key}:${valType} = ${JSON.stringify(value)};\n`;
+        }
+      }
+
+      this.generateEnvFile(content);
+    }
+  }
+
+  /**
+   * generate env files:
+   * 1、".variant/variant-env.ts"
+   * 2、".variant/variant-env.d.ts"
+   * 3、"variants/main/variant-env.d.ts"
+   */
+  private generateEnvFile(content: string) {
+    if (!this.variantOption?.genEnvFile) {
+      this.log(`this project don't need to generate ${VARIANT_ENV_DTS}`);
+      return;
+    }
+
+    const variantEnvTs = fileUtil.getPath(
+      false,
+      VARIANT_CACHE_DIR,
+      VARIANT_ENV_TS
+    );
+    this.log("variantEnvTs = ", variantEnvTs);
+    const variantEnvDts = fileUtil.getPath(
+      false,
+      VARIANT_CACHE_DIR,
+      VARIANT_ENV_DTS
+    );
+    this.log("variantEnvDts = ", variantEnvDts);
+
+    const mcsMainEnvDts = fileUtil.getPath(
+      false,
+      this.getMcsMainDirPath(),
+      VARIANT_ENV_DTS
+    );
+    this.log("mcsMainEnvDts = ", mcsMainEnvDts);
+    const fcsMainEnvDts = fileUtil.getPath(
+      false,
+      this.getFcsDirPath(),
+      VARIANT_ENV_DTS
+    );
+    this.log("fcsMainEnvDts = ", fcsMainEnvDts);
+
+    // read previous content from ".variant/variant-env.ts.pre"
+    const preEnvTsContent = fileUtil.readContent(`${variantEnvTs}.pre`);
+    // determine whether need to update 'variant-env.d.ts'
+    if (
+      preEnvTsContent &&
+      fileUtil.isExist(variantEnvDts) && // variant-env.d.ts is exist
+      fileUtil.isExist(mcsMainEnvDts) &&
+      fileUtil.isSame(variantEnvDts, mcsMainEnvDts) &&
+      preEnvTsContent === content // old and new content is same
+    ) {
+      this.log("variant-env.d.ts don't need to update");
+    } else {
+      this.log("update variant-env.ts");
+      fileUtil.writeContent(content, variantEnvTs);
+      const startTimeStamp = Date.now();
+      // generate ".variant/variant-env.d.ts" using tsc
+      // https://www.typescriptlang.org/docs/handbook/compiler-options.html
+      // npx tsc index.ts --declaration --emitDeclarationOnly
+      child_process.execSync(
+        `npx tsc ${variantEnvTs} --declaration --emitDeclarationOnly`
+      );
+      const costTime = Date.now() - startTimeStamp;
+      this.log(`update variant-env.d.ts, cost ${costTime}ms`);
+      // sync variant-env.d.ts to mcs main dir
+      if (fileUtil.isExist(variantEnvDts)) {
+        fileUtil.copyFile(variantEnvDts, mcsMainEnvDts);
+        // NB: variant-env.d.ts is possible not exist in fcs dir at this time
+        if (
+          !fileUtil.isExist(fcsMainEnvDts) ||
+          !fileUtil.isSame(mcsMainEnvDts, fcsMainEnvDts)
+        ) {
+          fileUtil.copyFile(mcsMainEnvDts, fcsMainEnvDts);
+        }
+      }
+      // rename `.variant/variant-env.ts` to `.variant/variant-env.ts.pre` for compare content next time
+      if (fileUtil.isExist(variantEnvTs)) {
+        fileUtil.moveFile(variantEnvTs, `${variantEnvTs}.pre`);
       }
     }
   }
