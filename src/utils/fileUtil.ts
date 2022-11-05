@@ -52,7 +52,7 @@ export function copyFile(srcFile: string, dstFile: string) {
   // if dstFile is exists, don't copy file when their modify time is the same.
   // TODO: consider using md5 to verify two files.
   if (isExist(dstFile)) {
-    if (!isSame(srcFile, dstFile)) copyFile(srcFile, dstFile);
+    if (!isSame(srcFile, dstFile)) fs.copyFileSync(srcFile, dstFile);
   } else {
     // step1. create the dir where the dstFile is located.
     mkdirs(path.resolve(dstFile, ".."));
