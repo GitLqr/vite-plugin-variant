@@ -3,10 +3,24 @@ import watch from "node-watch";
 import { ConfigEnv, UserConfig } from "vite";
 import { VariantOption } from "../models/VariantOption";
 import * as fileUtil from "../utils/fileUtil";
+import * as utils from "../utils/utils";
 
-const VARIANT_CACHE_DIR = ".variant";
 const VARIANT_ENV_TS = "variant-env.ts";
 const VARIANT_ENV_DTS = "variant-env.d.ts";
+
+// D:\vite-plugin-variant\examples\vite-vue3-demo
+const resolvedRoot = process.cwd();
+// D:\vite-plugin-variant\examples\vite-vue3-demo\package.json
+const pkgPath = utils.lookupFile(resolvedRoot, [`package.json`], {
+  pathOnly: true,
+});
+const cacheDir = pkgPath
+  ? fileUtil.getPath(true, pkgPath, `../node_modules/.variant`) // D:\vite-plugin-variant\examples\vite-vue3-demo\node_modules\.variant
+  : fileUtil.getPath(true, resolvedRoot, ".variant"); // D:\vite-plugin-variant\examples\vite-vue3-demo\.variant
+
+console.log(`resolvedRoot = ${resolvedRoot}`);
+console.log(`pkgPath = ${pkgPath}`);
+console.log(`cacheDir = ${cacheDir}`);
 
 /**
  * 变体（渠道）文件管理器
@@ -120,17 +134,9 @@ export default class VariantFilesManager {
       return;
     }
 
-    const variantEnvTs = fileUtil.getPath(
-      false,
-      VARIANT_CACHE_DIR,
-      VARIANT_ENV_TS
-    );
+    const variantEnvTs = fileUtil.getPath(false, cacheDir, VARIANT_ENV_TS);
     this.log("variantEnvTs = ", variantEnvTs);
-    const variantEnvDts = fileUtil.getPath(
-      false,
-      VARIANT_CACHE_DIR,
-      VARIANT_ENV_DTS
-    );
+    const variantEnvDts = fileUtil.getPath(false, cacheDir, VARIANT_ENV_DTS);
     this.log("variantEnvDts = ", variantEnvDts);
 
     const mcsMainEnvDts = fileUtil.getPath(
