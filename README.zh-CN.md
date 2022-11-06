@@ -1,6 +1,6 @@
 # Vite Plugin Variant
 
-中文|[English](README.md)
+中文 | [English](README.md)
 
 # 简介
 
