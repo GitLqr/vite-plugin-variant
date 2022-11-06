@@ -2,14 +2,16 @@
   <view class="content">
     <image class="logo" src="/static/logo.png" />
     <view class="text-area">
-      <text class="title">{{ title }}</text>
+      <text class="title">{{ flavor }}</text>
+      <text class="title">{{ website }}</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-const title = ref('Hello')
+import { ref } from "vue";
+const flavor = ref(FLAVOR);
+const website = ref(WEBSITE);
 </script>
 
 <style>
@@ -31,6 +33,8 @@ const title = ref('Hello')
 
 .text-area {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
 }
 

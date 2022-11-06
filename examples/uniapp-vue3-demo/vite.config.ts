@@ -5,10 +5,18 @@ import variant from "vite-plugin-variant";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    // 注意：variant() 必须在 uni() 插件之前
+    // 注意：variant() 必须在 uni() 之前！
     variant({
-      // mcsCurrent: process.env.CHANNEL,
       debug: true,
+      mcsCurrent: "huawei",
+      mcsDefine: {
+        xiaomi: {
+          WEBSITE: "https://www.mi.com/",
+        },
+        huawei: {
+          WEBSITE: "https://www.huawei.com/",
+        },
+      },
     }),
     uni(),
   ],
