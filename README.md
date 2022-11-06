@@ -18,13 +18,13 @@
 
 # Usage
 
-## 1、install
+## 1、Install
 
 ```shell
 npm i vite-plugin-variant -D
 ```
 
-## 2、config
+## 2、Config
 
 Add configuration in `vite.config.ts`：
 
