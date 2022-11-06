@@ -22,6 +22,10 @@
     }
   },
   "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
     "./variants/**/*.ts",
     "./variants/**/*.d.ts",
     "./variants/**/*.tsx",
